@@ -1,46 +1,55 @@
 const express = require('express');
+const morgan = require('morgan');
 const path = require('path');
 const fs = require('fs');
-const bodyParser = require('body-parser');
+
 let app = express();
 
 let dataPath = path.join(__dirname, '../entries.json');
 
-
-// logic to handle adding onto entries.json file
-let data = fs.readFileSync(dataPath);
-let entries = JSON.parse(data);
-
-app.set('view engine', 'ejs');
-app.use(bodyParser.urlencoded({ extended: false }));
-
-app.use((req, res, next) => {
-    console.log(req.url);
-    next();
-});
-
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+app.use(morgan('dev'));
+app.use(express.static('public'));
 
 app.post('/signup-form', (req, res) => {
     let entry = {
         name: req.body.name,
         email: req.body.email
     };
-    entries.push(entry);
 
-    fs.writeFile(dataPath, JSON.stringify(entries), (err) => {
-        if (err) console.log(err);
-        console.log('The file has been saved!');
+    fs.readFile(dataPath, (err, data) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send("Something went wrong");
+        } else {
+
+            let entries = JSON.parse(data);
+            entries.push(entry);
+
+            fs.writeFile(dataPath, JSON.stringify(entries), (err) => {
+                if (err) {
+                    console.log(err);
+                    res.status(500).send("Something went wrong");
+                } else {
+                    console.log('The file has been saved!');
+                    res.send("DONE!");
+                }
+            });
+        }
     });
-    res.send('Thank you for submitting your contact form!');
 });
 
 app.get('/formsubmissions', (req, res) => {
     fs.readFile(dataPath, (err, data) => {
-        if (err) console.log(err);
-        let signups = JSON.parse(data);
-        res.render('submissions', {data: signups});
+        if (err) {
+            console.log(err);
+            res.status(500).send("Something went wrong");
+        } else {
+            let signups = JSON.parse(data);
+            res.status(200).send(signups);
+        }
     });
 });
 
-app.listen(3000);
+app.listen(3000, () => console.log("Server Running on Port 3000"));
